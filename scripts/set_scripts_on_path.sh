@@ -1,7 +1,7 @@
-#!/bin/bash
-# Set scripts on path
 
-echo "export PATH=\$PATH:\$HOME/projs/rag-hatanga/scripts" >> ~/.bashrc
+# Obter o caminho absoluto do diretório onde este script está localizado
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+echo "export PATH=\$PATH:$SCRIPT_DIR" >> ~/.bashrc 
 
 source ~/.bashrc
