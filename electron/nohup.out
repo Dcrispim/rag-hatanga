@@ -1,0 +1,36 @@
+
+> rag-hatanga-electron@1.0.0 start /home/diego/projs/rag-hatanga/electron
+> electron .
+
+[62680:0113/220724.260824:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62680:0113/220724.260898:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62680:0113/220724.260909:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62680:0113/220724.260927:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62680:0113/220724.328428:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+
+> rag-hatanga-electron@1.0.0 start /home/diego/projs/rag-hatanga/electron
+> electron .
+
+[62900:0113/220733.056472:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62900:0113/220733.056655:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62900:0113/220733.056678:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62900:0113/220733.056688:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[62900:0113/220733.128228:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+
+> rag-hatanga-electron@1.0.0 start /home/diego/projs/rag-hatanga/electron
+> electron .
+
+[64013:0113/220952.933912:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64013:0113/220952.933968:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64013:0113/220952.933980:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64013:0113/220952.933989:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64013:0113/220952.973522:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+
+> rag-hatanga-electron@1.0.0 start /home/diego/projs/rag-hatanga/electron
+> electron .
+
+[64156:0113/221009.526322:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64156:0113/221009.526383:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64156:0113/221009.526397:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64156:0113/221009.526407:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+[64156:0113/221009.616281:ERROR:bus.cc(407)] Failed to connect to the bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
