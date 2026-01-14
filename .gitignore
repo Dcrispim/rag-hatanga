@@ -39,10 +39,7 @@ electron/web/node_modules/
 # Logs
 logs/
 *.log
-
-# Python temp scripts
-eldoria_prompt_*.py
-
+**/venv/
 # Coverage
 coverage/
 htmlcov/
