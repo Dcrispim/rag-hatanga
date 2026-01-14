@@ -10,4 +10,3 @@ langchain-core
 faiss-cpu
 python-dotenv
 pyperclip
-

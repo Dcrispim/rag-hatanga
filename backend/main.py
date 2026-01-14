@@ -9,6 +9,10 @@ import requests
 import re
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do .env
+load_dotenv()
 
 from models import (
     ChatRequest, ChatResponse, PromptRequest, PromptResponse,
@@ -545,10 +549,10 @@ async def reindex(request: ReindexRequest):
     if request.base_dir:
         base_dir_path = validate_path(request.base_dir)
     else:
-        # Usar BASE_DIR padrão do constants.py
-        import sys
-        sys.path.insert(0, str(PROJECT_ROOT / "src"))
-        from constants import BASE_DIR as DEFAULT_BASE_DIR
+        # Usar BASE_DIR padrão do .env
+        DEFAULT_BASE_DIR = os.getenv("BASE_DIR")
+        if not DEFAULT_BASE_DIR:
+            raise HTTPException(status_code=400, detail="BASE_DIR não configurado no arquivo .env")
         base_dir_path = Path(DEFAULT_BASE_DIR).resolve()
         if not base_dir_path.exists():
             raise HTTPException(status_code=400, detail=f"BASE_DIR padrão não existe: {DEFAULT_BASE_DIR}")
