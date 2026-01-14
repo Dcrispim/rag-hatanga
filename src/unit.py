@@ -6,8 +6,14 @@ import pyperclip
 
 def generate_prompt(title: str, base_path="./src/prompt_base.md"):
     base = Path(base_path).read_text(encoding="utf-8")
-    prompt = base.replace("TITLE_STRING", title)
+    if not base:
+        raise ValueError("Template não encontrado:\n Crie um arquivo prompt_base.md em src/ ou forneça um caminho válido com --template")
+    prompt = base.replace("[TITLE_STRING]", title)
     return prompt
+
+def generate_prompt_markdown(title: str, base_path="./src/prompt_base.md"):
+    prompt = generate_prompt(title, base_path)
+    return generate_prompt_markdown(prompt)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -61,7 +67,7 @@ Exemplos:
     # Verifica se o template existe
     template_path = Path(args.template)
     if not template_path.exists():
-        print(f"❌ Erro: Template não encontrado: {template_path}", file=sys.stderr)
+        print(f"❌ Erro: Template não encontrado: {template_path} \n Crie um arquivo prompt_base.md em src/ ou forneça um caminho válido com --template", file=sys.stderr)
         sys.exit(1)
     
     try:

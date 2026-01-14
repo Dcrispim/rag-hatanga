@@ -209,7 +209,7 @@ async def generate_template_prompt(request: TemplateRequest):
     
     # Validar que o template existe
     if not template_path.is_file():
-        raise HTTPException(status_code=400, detail=f"Template não encontrado: {request.template_path}")
+        raise HTTPException(status_code=400, detail=f"Template não encontrado: {request.template_path} \n Crie um arquivo prompt_base.md em src/ ou forneça um caminho válido com --template")
     
     # Determinar destino: usar o fornecido ou padrão baseado no BASE_DIR
     if request.destination:
