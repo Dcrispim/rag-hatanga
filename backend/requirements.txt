@@ -4,10 +4,4 @@ pydantic>=2.7.4,<3.0.0
 python-multipart==0.0.6
 requests==2.31.0
 markdown-it-py==3.0.0
-langchain-ollama
-langchain-community
-langchain-core
-faiss-cpu
-python-dotenv
-pyperclip
 
