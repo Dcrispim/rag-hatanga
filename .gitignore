@@ -49,3 +49,4 @@ htmlcov/
 # Misc
 .idea/
 *.bak
+src/prompt_base.md
