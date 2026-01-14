@@ -1,0 +1,1 @@
+BASE_DIR = "/mnt/d/Documents/Vaults/Ragatanga"
