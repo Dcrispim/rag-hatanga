@@ -1,19 +1,19 @@
 import sys
+import os
 import argparse
 from pathlib import Path
 from prompt_preview import generate_prompt_markdown
 import pyperclip
 
-def generate_prompt(title: str, base_path="./src/prompt_base.md"):
+MAIN_DIR = Path(__file__).parent
+
+
+def generate_prompt(title: str, base_path=os.path.join(MAIN_DIR, "prompt_base.md")):
     base = Path(base_path).read_text(encoding="utf-8")
     if not base:
-        raise ValueError("Template não encontrado:\n Crie um arquivo prompt_base.md em src/ ou forneça um caminho válido com --template")
+        raise ValueError(f"Template não encontrado: {base_path} \n Crie um arquivo prompt_base.md em {MAIN_DIR} ou forneça um caminho válido com --template")
     prompt = base.replace("[TITLE_STRING]", title)
     return prompt
-
-def generate_prompt_markdown(title: str, base_path="./src/prompt_base.md"):
-    prompt = generate_prompt(title, base_path)
-    return generate_prompt_markdown(prompt)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -38,8 +38,8 @@ Exemplos:
     )
     parser.add_argument(
         "--template",
-        default="./src/prompt_base.md",
-        help="Caminho do template (padrão: ./src/prompt_base.md)"
+        default=os.path.join(MAIN_DIR, "prompt_base.md"),
+        help=f"Caminho do template (padrão: {os.path.join(MAIN_DIR, 'prompt_base.md')})"
     )
     parser.add_argument(
         "-o", "--output",
