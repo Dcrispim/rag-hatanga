@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from pathlib import Path
 
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
@@ -96,24 +97,43 @@ chunks = splitter.split_documents(documents)
 # -----------------------------
 # Embeddings
 # -----------------------------
-embeddings = OllamaEmbeddings(
-    model="nomic-embed-text"
-)
+try:
+    embeddings = OllamaEmbeddings(
+        model="nomic-embed-text"
+    )
+    # Test connection by trying to embed a small text
+    _ = embeddings.embed_query("test")
+except Exception as e:
+    print("❌ Erro ao conectar com Ollama:", file=sys.stderr)
+    print(f"   {str(e)}", file=sys.stderr)
+    print("\n💡 Verifique se:", file=sys.stderr)
+    print("   1. Ollama está instalado (https://ollama.com/download)", file=sys.stderr)
+    print("   2. Ollama está rodando (execute: ollama serve)", file=sys.stderr)
+    print("   3. O modelo 'nomic-embed-text' está disponível (execute: ollama pull nomic-embed-text)", file=sys.stderr)
+    sys.exit(1)
 
 # -----------------------------
 # Vector store
 # -----------------------------
-if args.partial and (VECTORSTORE_DIR / "index.faiss").exists():
-    print("📌 Modo parcial: carregando índice existente")
-    vectorstore = FAISS.load_local(
-        VECTORSTORE_DIR,
-        embeddings,
-        allow_dangerous_deserialization=True
-    )
-    vectorstore.add_documents(chunks)
-else:
-    print("📌 Modo completo: recriando índice")
-    vectorstore = FAISS.from_documents(chunks, embeddings)
+try:
+    if args.partial and (VECTORSTORE_DIR / "index.faiss").exists():
+        print("📌 Modo parcial: carregando índice existente")
+        vectorstore = FAISS.load_local(
+            VECTORSTORE_DIR,
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
+        vectorstore.add_documents(chunks)
+    else:
+        print("📌 Modo completo: recriando índice")
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+except Exception as e:
+    print("❌ Erro ao criar vectorstore:", file=sys.stderr)
+    print(f"   {str(e)}", file=sys.stderr)
+    if "ConnectionError" in str(type(e)) or "Failed to connect" in str(e):
+        print("\n💡 Verifique se Ollama está rodando:", file=sys.stderr)
+        print("   ollama serve", file=sys.stderr)
+    sys.exit(1)
 
 vectorstore.save_local(VECTORSTORE_DIR)
 
