@@ -8,8 +8,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 
-from constants import BASE_DIR
-
+BASE_DIR = os.getenv("BASE_DIR")
+if not BASE_DIR:
+    raise ValueError("BASE_DIR não configurado no arquivo .env")
+BASE_DIR = Path(BASE_DIR)
 # -----------------------------
 # Config
 # -----------------------------

@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from constants import BASE_DIR
+
 
 BASE_DIR = Path(os.environ.get("BASE_DIR", BASE_DIR))
 

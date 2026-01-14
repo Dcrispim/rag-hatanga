@@ -1,16 +1,20 @@
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
-from constants import BASE_DIR
 import os
 import argparse
 from dotenv import load_dotenv
 from datetime import datetime
 import pyperclip
+from pathlib import Path
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
+BASE_DIR = os.getenv("BASE_DIR")
+if not BASE_DIR:
+    raise ValueError("BASE_DIR não configurado no arquivo .env")
+BASE_DIR = Path(BASE_DIR)
 EMBEDDINGS_MODEL = os.getenv("EMBEDDINGS_MODEL", "nomic-embed-text")
 RETRIEVER_K = int(os.getenv("RETRIEVER_K", "4"))
 
@@ -176,8 +180,8 @@ def generate_prompt_markdown(question: str, base_dir: str = None) -> str:
     """
     # Usar base_dir fornecido ou fallback para BASE_DIR de constants
     if base_dir is None:
-        from constants import BASE_DIR as _BASE_DIR
-        base_dir = _BASE_DIR
+        
+        base_dir = BASE_DIR    
     else:
         base_dir = str(base_dir)  # Garantir que é string
     

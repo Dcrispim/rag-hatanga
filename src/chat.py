@@ -3,7 +3,6 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from constants import BASE_DIR
 import os
 import subprocess
 import argparse
@@ -14,6 +13,11 @@ from pathlib import Path
 
 # Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
+
+BASE_DIR = os.getenv("BASE_DIR")
+if not BASE_DIR:
+    raise ValueError("BASE_DIR não configurado no arquivo .env")
+BASE_DIR = Path(BASE_DIR)
 
 # Configurações do .env com valores padrão
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.1")
