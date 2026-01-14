@@ -1,0 +1,54 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Linux
+*~
+
+# Temp files
+*.swp
+*.swo
+*.tmp
+
+# Electron
+electron/web/dist/
+electron/web/node_modules/
+
+# Logs
+logs/
+*.log
+
+# Python temp scripts
+eldoria_prompt_*.py
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+.cache
+
+# Misc
+.idea/
+*.bak
