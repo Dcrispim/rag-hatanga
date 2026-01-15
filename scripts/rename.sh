@@ -1,4 +1,4 @@
 #!/bin/bash
 # Wrapper script para rename.py
-$HOME/projs/rag-hatanga/.venv/bin/python $HOME/projs/rag-hatanga/rename.py "$@"
-
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ..&& pwd)"
+$ROOT_DIR/.venv/bin/python $ROOT_DIR/src/rename.py "$@"

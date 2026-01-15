@@ -1,4 +1,5 @@
 #!/bin/bash
 # Wrapper script para src/cli.py
-$HOME/projs/rag-hatanga/.venv/bin/python /home/diego/projs/rag-hatanga/src/cli.py "$@"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ..&& pwd)"
+$ROOT_DIR/.venv/bin/python $ROOT_DIR/src/cli.py "$@"
 

@@ -1,4 +1,5 @@
 #!/bin/bash
 # Wrapper script para backend/main.py
-$HOME/projs/rag-hatanga/backend/venv/bin/python $HOME/projs/rag-hatanga/backend/main.py "$@"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ..&& pwd)"
+$ROOT_DIR/backend/venv/bin/python $ROOT_DIR/backend/main.py "$@"
 
