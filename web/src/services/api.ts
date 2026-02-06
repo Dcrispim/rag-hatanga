@@ -16,6 +16,9 @@ export interface ChatResponse {
 export interface PromptRequest {
   question: string;
   base_dir: string;
+  retriever_k?: number;
+  chat_history_path?: string;
+  chat_span?: number;  // horas
 }
 
 export interface PromptResponse {
