@@ -8,14 +8,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 
-BASE_DIR = os.getenv("BASE_DIR")
-if not BASE_DIR:
-    raise ValueError("BASE_DIR não configurado no arquivo .env")
-BASE_DIR = Path(BASE_DIR)
+
 # -----------------------------
 # Config
 # -----------------------------
-BASE_DIR = Path(os.environ.get("BASE_DIR", BASE_DIR))
+BASE_DIR = Path(os.environ.get("BASE_DIR","docs")).resolve()
 INDEXED_FILE = BASE_DIR / ".rag_indexeds"
 VECTORSTORE_DIR = BASE_DIR  # FAISS já salva vários arquivos aqui
 RAGIGNORE_FILE = BASE_DIR / ".ragignore"
