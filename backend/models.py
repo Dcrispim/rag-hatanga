@@ -15,6 +15,9 @@ class ChatResponse(BaseModel):
 class PromptRequest(BaseModel):
     question: str
     base_dir: str
+    retriever_k: Optional[int] = 16
+    chat_history_path: Optional[str] = None
+    chat_span: Optional[int] = None  # horas
 
 class PromptResponse(BaseModel):
     markdown: str
