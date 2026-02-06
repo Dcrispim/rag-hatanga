@@ -86,6 +86,7 @@ export interface SavePromptResponseRequest {
   question: string;
   answer: string;
   chat_history_dir: string;
+  base_dir?: string;
 }
 
 export interface SavePromptResponseResponse {
@@ -158,7 +159,7 @@ export const api = {
   },
   
   getJobStatus: async (_jobId: string): Promise<JobStatus> => {
-    const response = await fetch(`${API_BASE}/queue/job/${jobId}`);
+    const response = await fetch(`${API_BASE}/queue/job/${_jobId}`);
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: `Erro ${response.status}` }));
@@ -235,7 +236,21 @@ export const api = {
       throw new Error(error.detail || 'Erro ao salvar resposta');
     }
     
-    return response.json();
+    const result = await response.json();
+    
+    // Chamar indexação em background após salvar com sucesso
+    if (result.success && request.base_dir) {
+      // Executar em background sem aguardar resposta
+      api.reindex({
+        base_dir: request.base_dir,
+        partial: true, // Indexação parcial (apenas arquivos novos)
+      }).catch((error) => {
+        // Silenciosamente ignorar erros de indexação em background
+        console.warn('Erro ao indexar em background:', error);
+      });
+    }
+    
+    return result;
   },
 };
 

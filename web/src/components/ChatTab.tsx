@@ -3,6 +3,10 @@ import { useQueryState } from 'nuqs';
 import ReactMarkdown from 'react-markdown';
 import { api, ChatRequest, ChatHistoryRequest } from '../services/api';
 import { storage } from '../utils/storage';
+import { ChevronDownIcon } from 'lucide-react';
+
+
+const BOX_MAX_LENGTH = 200;
 
 interface Message {
   id: string;
@@ -170,26 +174,7 @@ export default function ChatTab() {
           <div key={msg.id} className="space-y-2">
             {/* Mensagem do usuário (pergunta) */}
             <div className="flex justify-end">
-              <div className="max-w-[80%] bg-blue-600 text-white rounded-lg px-4 py-2 prose prose-invert prose-sm max-w-none">
-                <ReactMarkdown
-                  components={{
-                    p: ({ children }: any) => <p className="mb-2 last:mb-0">{children}</p>,
-                    h1: ({ children }: any) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                    h2: ({ children }: any) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                    h3: ({ children }: any) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
-                    ul: ({ children }: any) => <ul className="list-disc list-inside mb-2">{children}</ul>,
-                    ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
-                    li: ({ children }: any) => <li className="mb-1">{children}</li>,
-                    code: ({ children }: any) => <code className="bg-blue-700 px-1 rounded text-xs">{children}</code>,
-                    pre: ({ children }: any) => <pre className="bg-blue-700 p-2 rounded text-xs overflow-x-auto mb-2">{children}</pre>,
-                    strong: ({ children }: any) => <strong className="font-bold">{children}</strong>,
-                    em: ({ children }: any) => <em className="italic">{children}</em>,
-                  }}
-                >
-                  {msg.question}
-                </ReactMarkdown>
-                <p className="text-xs text-blue-100 mt-2">{formatDate(msg.timestamp)}</p>
-              </div>
+              <QuestionBox question={msg.question} timestamp={msg.timestamp} />
             </div>
 
             {/* Resposta ou "digitando..." */}
@@ -200,29 +185,7 @@ export default function ChatTab() {
                 </div>
               </div>
             ) : msg.answer ? (
-              <div className="flex justify-start">
-                <div className="max-w-[80%] bg-white border border-gray-200 rounded-lg px-4 py-2 prose prose-sm max-w-none">
-                  <ReactMarkdown
-                    components={{
-                      p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-800">{children}</p>,
-                      h1: ({ children }: any) => <h1 className="text-lg font-bold mb-2 text-gray-900">{children}</h1>,
-                      h2: ({ children }: any) => <h2 className="text-base font-bold mb-2 text-gray-900">{children}</h2>,
-                      h3: ({ children }: any) => <h3 className="text-sm font-bold mb-1 text-gray-900">{children}</h3>,
-                      ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 text-gray-800">{children}</ul>,
-                      ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 text-gray-800">{children}</ol>,
-                      li: ({ children }: any) => <li className="mb-1">{children}</li>,
-                      code: ({ children }: any) => <code className="bg-gray-100 px-1 rounded text-xs text-gray-900">{children}</code>,
-                      pre: ({ children }: any) => <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto mb-2 text-gray-900">{children}</pre>,
-                      strong: ({ children }: any) => <strong className="font-bold">{children}</strong>,
-                      em: ({ children }: any) => <em className="italic">{children}</em>,
-                      blockquote: ({ children }: any) => <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-2">{children}</blockquote>,
-                    }}
-                  >
-                    {msg.answer}
-                  </ReactMarkdown>
-                  <p className="text-xs text-gray-500 mt-2">{formatDate(msg.timestamp)}</p>
-                </div>
-              </div>
+              <AnswerBox answer={msg.answer} timestamp={msg.timestamp} />
             ) : null}
           </div>
         ))}
@@ -258,3 +221,95 @@ export default function ChatTab() {
     </div>
   );
 }
+
+
+const AnswerBox = ({ answer, timestamp }: { answer: string, timestamp: string }) => {
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  const [colapsed, setColapsed] = useState(false);
+  const toggleColapsed = () => {
+    setColapsed(!colapsed);
+  };
+  return (  
+    <div className="flex justify-start">
+    <div className="max-w-[80%] bg-white border border-gray-200 rounded-lg px-4 py-2 prose prose-sm max-w-none">
+      <ReactMarkdown
+        components={{
+          p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-800">{children}</p>,
+          h1: ({ children }: any) => <h1 className="text-lg font-bold mb-2 text-gray-900">{children}</h1>,
+          h2: ({ children }: any) => <h2 className="text-base font-bold mb-2 text-gray-900">{children}</h2>,
+          h3: ({ children }: any) => <h3 className="text-sm font-bold mb-1 text-gray-900">{children}</h3>,
+          ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 text-gray-800">{children}</ul>,
+          ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 text-gray-800">{children}</ol>,
+          li: ({ children }: any) => <li className="mb-1">{children}</li>,
+          code: ({ children }: any) => <code className="bg-gray-100 px-1 rounded text-xs text-gray-900">{children}</code>,
+          pre: ({ children }: any) => <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto mb-2 text-gray-900">{children}</pre>,
+          strong: ({ children }: any) => <strong className="font-bold">{children}</strong>,
+          em: ({ children }: any) => <em className="italic">{children}</em>,
+          blockquote: ({ children }: any) => <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-2">{children}</blockquote>,
+        }}
+      >
+          {colapsed ? answer : answer.slice(0, BOX_MAX_LENGTH) + '...'}
+        </ReactMarkdown>
+        <p className="text-xs text-gray-500 mt-2">{formatDate(timestamp)}</p>
+        <button onClick={toggleColapsed} className="text-xs text-gray-500 mt-2">
+          <ChevronDownIcon className={`w-4 h-4 ${colapsed ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const QuestionBox = ({ question, timestamp }: { question: string, timestamp: string }) => {
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  const [colapsed, setColapsed] = useState(false);
+  const toggleColapsed = () => {
+    setColapsed(!colapsed);
+  };  
+  return (
+    <div className="flex justify-end">
+    <div className="max-w-[80%] bg-blue-600 text-white rounded-lg px-4 py-2 prose prose-invert prose-sm max-w-none">
+      <ReactMarkdown
+        components={{
+          p: ({ children }: any) => <p className="mb-2 last:mb-0">{children}</p>,
+          h1: ({ children }: any) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+          h2: ({ children }: any) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+          h3: ({ children }: any) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+          ul: ({ children }: any) => <ul className="list-disc list-inside mb-2">{children}</ul>,
+          ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
+          li: ({ children }: any) => <li className="mb-1">{children}</li>,
+          code: ({ children }: any) => <code className="bg-blue-700 px-1 rounded text-xs">{children}</code>,
+          pre: ({ children }: any) => <pre className="bg-blue-700 p-2 rounded text-xs overflow-x-auto mb-2">{children}</pre>,
+          strong: ({ children }: any) => <strong className="font-bold">{children}</strong>,
+          em: ({ children }: any) => <em className="italic">{children}</em>,
+        }}
+      >
+          {colapsed ? question : question.slice(0, BOX_MAX_LENGTH) + '...'}
+      </ReactMarkdown>
+      <p className="text-xs text-blue-100 mt-2">{formatDate(timestamp)}</p>
+      <button onClick={toggleColapsed} className="text-xs text-blue-100 mt-2">
+        <ChevronDownIcon className={`w-4 h-4 ${colapsed ? 'rotate-180' : ''}`} />
+      </button>
+      </div>
+    </div>
+  );
+};
+
+export { AnswerBox, QuestionBox };

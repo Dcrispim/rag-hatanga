@@ -50,3 +50,7 @@ htmlcov/
 .idea/
 *.bak
 src/prompt_base.md
+docs/.rag_indexeds
+docs/index.pkl
+.gitignore
+docs/index.faiss
