@@ -96,6 +96,22 @@ export interface SavePromptResponseResponse {
   error?: string;
 }
 
+export interface BrowseRequest {
+  type: 'file' | 'dir';
+  path: string;
+}
+
+export interface BrowseItem {
+  name: string;
+  path: string;
+  is_directory: boolean;
+}
+
+export interface BrowseResponse {
+  items: BrowseItem[];
+  current_path: string;
+}
+
 export const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
     const response = await fetch(`${API_BASE}/chat`, {
@@ -251,6 +267,23 @@ export const api = {
     }
     
     return result;
+  },
+
+  browse: async (request: BrowseRequest): Promise<BrowseResponse> => {
+    const response = await fetch(`${API_BASE}/browse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao listar diretório');
+    }
+    
+    return response.json();
   },
 };
 
