@@ -19,7 +19,8 @@ from models import (
     TemplateRequest, TemplateResponse, WebhookPayload, QueueStatusResponse,
     ChatHistoryRequest, ChatHistoryResponse, ChatMessage,
     ReindexRequest, ReindexResponse,
-    SavePromptResponseRequest, SavePromptResponseResponse
+    SavePromptResponseRequest, SavePromptResponseResponse,
+    BrowseRequest, BrowseResponse, BrowseItem
 )
 from job_queue import JobQueue, JobStatus
 
@@ -644,6 +645,80 @@ async def save_prompt_response(request: SavePromptResponseRequest):
             message="Erro ao salvar resposta",
             error=str(e)
         )
+
+@app.post("/api/browse", response_model=BrowseResponse)
+async def browse_path(request: BrowseRequest):
+    """Lista diretórios e arquivos .md baseado no path fornecido"""
+    if request.type not in ["file", "dir"]:
+        raise HTTPException(status_code=400, detail="type deve ser 'file' ou 'dir'")
+    
+    try:
+        # Validar e resolver path
+        try:
+            path_obj = validate_path(request.path)
+        except (PermissionError, OSError) as e:
+            raise HTTPException(status_code=403, detail=f"Sem permissão para acessar o diretório: {str(e)}")
+        
+        try:
+            if not path_obj.is_dir():
+                raise HTTPException(status_code=400, detail="Path deve ser um diretório")
+        except (PermissionError, OSError) as e:
+            raise HTTPException(status_code=403, detail=f"Sem permissão para acessar o diretório: {str(e)}")
+        
+        items = []
+        
+        # Listar todos os itens no diretório, ignorando erros de permissão
+        try:
+            dir_items = path_obj.iterdir()
+        except (PermissionError, OSError) as e:
+            raise HTTPException(status_code=403, detail=f"Sem permissão para listar o diretório: {str(e)}")
+        
+        for item in dir_items:
+            try:
+                # Verificar se pode acessar o item (evitar Permission denied)
+                if not item.exists():
+                    continue
+                
+                # Se type é "dir", retornar apenas diretórios
+                if request.type == "dir":
+                    if item.is_dir():
+                        items.append(BrowseItem(
+                            name=item.name,
+                            path=str(item),
+                            is_directory=True
+                        ))
+                # Se type é "file", retornar diretórios e arquivos .md
+                elif request.type == "file":
+                    if item.is_dir():
+                        items.append(BrowseItem(
+                            name=item.name,
+                            path=str(item),
+                            is_directory=True
+                        ))
+                    elif item.is_file() and item.suffix.lower() == ".md":
+                        items.append(BrowseItem(
+                            name=item.name,
+                            path=str(item),
+                            is_directory=False
+                        ))
+            except (PermissionError, OSError) as e:
+                print(f"Erro ao acessar item: {e}")
+                continue
+            except Exception as e:
+                # Ignorar outros erros ao acessar itens individuais
+                continue
+        
+        # Ordenar: diretórios primeiro, depois arquivos, ambos alfabeticamente
+        items.sort(key=lambda x: (not x.is_directory, x.name.lower()))
+        
+        return BrowseResponse(
+            items=items,
+            current_path=str(path_obj)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao listar diretório: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
