@@ -199,8 +199,14 @@ async def generate_prompt(request: PromptRequest):
     from prompt_preview import generate_prompt_markdown
     
     try:
-        # Passar base_dir como argumento para a função
-        markdown = generate_prompt_markdown(request.question, base_dir=str(base_dir_path))
+        # Passar base_dir, retriever_k, chat_history_path e chat_span como argumentos para a função
+        markdown = generate_prompt_markdown(
+            request.question, 
+            base_dir=str(base_dir_path),
+            retriever_k=request.retriever_k,
+            chat_history_path=request.chat_history_path,
+            chat_span=request.chat_span
+        )
         return PromptResponse(markdown=markdown)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

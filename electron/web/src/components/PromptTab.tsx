@@ -21,6 +21,10 @@ export default function PromptTab() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [retrieverK, setRetrieverK] = useState<number>(16);
+  const [chatSpanHours, setChatSpanHours] = useState<number>(2);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -38,6 +42,8 @@ export default function PromptTab() {
       const request: PromptRequest = {
         question: question || '',
         base_dir: baseDir,
+        retriever_k: showAdvanced ? retrieverK : undefined,
+        chat_span: showAdvanced ? chatSpanHours : undefined,
       };
 
       const response = await api.generatePrompt(request);
@@ -159,6 +165,61 @@ export default function PromptTab() {
             </div>
           </div>
         </div>
+        
+        {/* Configurações Avançadas */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showAdvanced}
+              onChange={(e) => setShowAdvanced(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Configurações Avançadas</span>
+          </label>
+          
+          {showAdvanced && (
+            <div className="mt-3 ml-6 p-4 bg-gray-50 border border-gray-200 rounded-md space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  RETRIEVER_K (Número de documentos a recuperar)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={retrieverK}
+                  onChange={(e) => setRetrieverK(parseInt(e.target.value) || 16)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Padrão: 16. Aumente para recuperar mais documentos do contexto.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Horas de Contexto de Conversa
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="168"
+                  step="0.5"
+                  value={chatSpanHours}
+                  onChange={(e) => setChatSpanHours(parseFloat(e.target.value) || 2)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Padrão: 2 horas. Inclui mensagens do histórico de chat dentro deste intervalo como contexto adicional.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+        
         <div className="flex justify-end">
           <button
             type="submit"

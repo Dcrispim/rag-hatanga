@@ -14,32 +14,44 @@ from pathlib import Path
 # Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
 
-BASE_DIR = os.getenv("BASE_DIR")
-if not BASE_DIR:
-    raise ValueError("BASE_DIR não configurado no arquivo .env")
-BASE_DIR = Path(BASE_DIR)
-
 # Configurações do .env com valores padrão
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.1")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0"))
 EMBEDDINGS_MODEL = os.getenv("EMBEDDINGS_MODEL", "nomic-embed-text")
 RETRIEVER_K = int(os.getenv("RETRIEVER_K", "4"))
 
-vectorstore_path = os.path.join(BASE_DIR)
 # Embeddings
 embeddings = OllamaEmbeddings(model=EMBEDDINGS_MODEL)
 
+def get_base_dir():
+    """Obtém BASE_DIR da variável de ambiente, ou do .env como fallback"""
+    base_dir = os.getenv("BASE_DIR")
+    if not base_dir:
+        raise ValueError("BASE_DIR não configurado na variável de ambiente ou arquivo .env")
+    return Path(base_dir)
+
 def load_vectorstore():
-    """Carrega o vectorstore"""
+    """Carrega o vectorstore dinamicamente baseado no BASE_DIR atual"""
+    base_dir = get_base_dir()
+    vectorstore_path = str(base_dir)
     return FAISS.load_local(
         vectorstore_path,
         embeddings,
         allow_dangerous_deserialization=True
     )
 
-# Vectorstore inicial
-vectorstore = load_vectorstore()
-retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_K})
+def get_vectorstore():
+    """Obtém o vectorstore atual"""
+    return load_vectorstore()
+
+def get_retriever():
+    """Obtém o retriever atual"""
+    vectorstore = get_vectorstore()
+    return vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_K})
+
+# Vectorstore inicial (será recarregado dinamicamente quando necessário)
+vectorstore = get_vectorstore()
+retriever = get_retriever()
 
 # LLM
 llm = OllamaLLM(
@@ -100,8 +112,11 @@ def save_chat_history(question, answer, sources=None, title=None, silent=False):
     """Salva a pergunta e resposta em um arquivo markdown e reindexa o RAG"""
     global vectorstore, retriever, chain
     
+    # Obter BASE_DIR atual
+    base_dir = get_base_dir()
+    
     # Criar diretório se não existir
-    chat_history_dir = os.path.join(BASE_DIR, "chat_history")
+    chat_history_dir = os.path.join(base_dir, "chat_history")
     os.makedirs(chat_history_dir, exist_ok=True)
     
     # Gerar timestamp
@@ -161,8 +176,8 @@ def save_chat_history(question, answer, sources=None, title=None, silent=False):
             if not silent:
                 print("✅ RAG reindexado com sucesso")
             # Recarregar vectorstore e atualizar chain
-            vectorstore = load_vectorstore()
-            retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_K})
+            vectorstore = get_vectorstore()
+            retriever = get_retriever()
             chain = (
                 {
                     "context": retriever | format_docs,
@@ -179,22 +194,32 @@ def save_chat_history(question, answer, sources=None, title=None, silent=False):
         if not silent:
             print(f"⚠️ Erro ao executar reindexação: {e}")
 
-# Chain (LCEL)
-chain = (
-    {
-        "context": retriever | format_docs,
-        "question": RunnablePassthrough(),
-    }
-    | prompt
-    | llm
-    | StrOutputParser()
-)
+def get_chain():
+    """Obtém a chain atual baseada no retriever dinâmico"""
+    current_retriever = get_retriever()
+    return (
+        {
+            "context": current_retriever | format_docs,
+            "question": RunnablePassthrough(),
+        }
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+
+# Chain inicial (LCEL)
+chain = get_chain()
 
 def get_reference_files(question):
     """Obtém os arquivos de referência usados para responder a pergunta"""
+    # Obter retriever atual
+    current_retriever = get_retriever()
     # Usar invoke() pois o retriever é um Runnable
-    docs = retriever.invoke(question)
+    docs = current_retriever.invoke(question)
     reference_files = set()
+    
+    # Obter BASE_DIR atual
+    base_dir = get_base_dir()
     
     for doc in docs:
         # Extrair o caminho do arquivo dos metadados
@@ -202,7 +227,7 @@ def get_reference_files(question):
         if source:
             # Tentar normalizar para caminho relativo ao BASE_DIR
             try:
-                rel_path = os.path.relpath(source, BASE_DIR)
+                rel_path = os.path.relpath(source, base_dir)
                 reference_files.add(rel_path)
             except ValueError:
                 # Se não for possível calcular caminho relativo, usar o caminho completo
@@ -212,6 +237,9 @@ def get_reference_files(question):
 
 def process_question(question, json_mode=False):
     """Processa uma pergunta e retorna a resposta"""
+    # Obter chain atual
+    current_chain = get_chain()
+    
     # Timestamp da pergunta
     question_timestamp = datetime.now().isoformat()
     
@@ -219,7 +247,7 @@ def process_question(question, json_mode=False):
     reference_files = get_reference_files(question)
     
     # Gerar resposta
-    answer = chain.invoke(question)
+    answer = current_chain.invoke(question)
     
     # Timestamp da resposta
     answer_timestamp = datetime.now().isoformat()
