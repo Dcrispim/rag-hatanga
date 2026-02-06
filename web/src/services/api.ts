@@ -86,6 +86,7 @@ export interface SavePromptResponseRequest {
   question: string;
   answer: string;
   chat_history_dir: string;
+  base_dir?: string;
 }
 
 export interface SavePromptResponseResponse {
@@ -93,6 +94,22 @@ export interface SavePromptResponseResponse {
   message: string;
   filename?: string;
   error?: string;
+}
+
+export interface BrowseRequest {
+  type: 'file' | 'dir';
+  path: string;
+}
+
+export interface BrowseItem {
+  name: string;
+  path: string;
+  is_directory: boolean;
+}
+
+export interface BrowseResponse {
+  items: BrowseItem[];
+  current_path: string;
 }
 
 export const api = {
@@ -158,7 +175,7 @@ export const api = {
   },
   
   getJobStatus: async (_jobId: string): Promise<JobStatus> => {
-    const response = await fetch(`${API_BASE}/queue/job/${jobId}`);
+    const response = await fetch(`${API_BASE}/queue/job/${_jobId}`);
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: `Erro ${response.status}` }));
@@ -233,6 +250,37 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Erro ao salvar resposta');
+    }
+    
+    const result = await response.json();
+    
+    // Chamar indexação em background após salvar com sucesso
+    if (result.success && request.base_dir) {
+      // Executar em background sem aguardar resposta
+      api.reindex({
+        base_dir: request.base_dir,
+        partial: true, // Indexação parcial (apenas arquivos novos)
+      }).catch((error) => {
+        // Silenciosamente ignorar erros de indexação em background
+        console.warn('Erro ao indexar em background:', error);
+      });
+    }
+    
+    return result;
+  },
+
+  browse: async (request: BrowseRequest): Promise<BrowseResponse> => {
+    const response = await fetch(`${API_BASE}/browse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao listar diretório');
     }
     
     return response.json();

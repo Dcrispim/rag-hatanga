@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { storage, PathAlias } from '../utils/storage';
 import { api } from '../services/api';
+import PathInput from './PathInput';
 
 export default function ConfigTab() {
   const [baseDir, setBaseDir] = useState('');
@@ -153,101 +154,38 @@ export default function ConfigTab() {
         </div>
       )}
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          BASE_DIR
-        </label>
-        <input
-          type="text"
-          value={baseDir}
-          onChange={(e) => setBaseDir(e.target.value)}
-          placeholder="/caminho/para/base/dir"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Caminho absoluto para o diretório base do projeto
-        </p>
-        {baseDirHistory.length > 0 && (
-          <div className="mt-2">
-            <p className="text-xs text-gray-600 mb-1">Histórico:</p>
-            <div className="flex flex-wrap gap-1">
-              {baseDirHistory.map((path, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectFromHistory(path, 'base')}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                >
-                  {path}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <PathInput
+        label="BASE_DIR"
+        value={baseDir.replace('//', '/')}
+        onChange={setBaseDir}
+        placeholder="/caminho/para/base/dir"
+        description="Caminho absoluto para o diretório base do projeto"
+        history={baseDirHistory}
+        onSelectFromHistory={(path) => handleSelectFromHistory(path, 'base')}
+        selectDirectory={true}
+      />
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Chat History Directory
-        </label>
-        <input
-          type="text"
-          value={chatHistoryDir}
-          onChange={(e) => setChatHistoryDir(e.target.value)}
-          placeholder="/caminho/para/chat_history"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Caminho absoluto para o diretório de histórico de chat (ex: BASE_DIR/chat_history)
-        </p>
-        {chatHistoryDirHistory.length > 0 && (
-          <div className="mt-2">
-            <p className="text-xs text-gray-600 mb-1">Histórico:</p>
-            <div className="flex flex-wrap gap-1">
-              {chatHistoryDirHistory.map((path, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectFromHistory(path, 'chat')}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                >
-                  {path}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <PathInput
+        label="CHAT_HISTORY_DIR"
+        value={chatHistoryDir.replace('//', '/')}
+        onChange={setChatHistoryDir}
+        placeholder="/caminho/para/chat_history"
+        description="Caminho absoluto para o diretório de histórico de chat (ex: BASE_DIR/chat_history)"
+        history={chatHistoryDirHistory}
+        onSelectFromHistory={(path) => handleSelectFromHistory(path, 'chat')}
+        selectDirectory={true}
+      />
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Template Path (Opcional)
-        </label>
-        <input
-          type="text"
-          value={templatePath}
-          onChange={(e) => setTemplatePath(e.target.value)}
-          placeholder="/caminho/para/template.md"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Caminho absoluto para o arquivo template markdown
-        </p>
-        {templatePathHistory.length > 0 && (
-          <div className="mt-2">
-            <p className="text-xs text-gray-600 mb-1">Histórico:</p>
-            <div className="flex flex-wrap gap-1">
-              {templatePathHistory.map((path, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectFromHistory(path, 'template')}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                >
-                  {path}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <PathInput
+        label="TEMPLATE_PATH"
+        value={templatePath.replace('//', '/')}
+        onChange={setTemplatePath}
+        placeholder="/caminho/para/template.md"
+        description="Caminho absoluto para o arquivo template markdown"
+        history={templatePathHistory}
+        selectFile={true}
+        onSelectFromHistory={(path) => handleSelectFromHistory(path, 'template')}
+      />
 
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">

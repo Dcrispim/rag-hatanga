@@ -81,3 +81,16 @@ class SavePromptResponseResponse(BaseModel):
     filename: Optional[str] = None
     error: Optional[str] = None
 
+
+class BrowseRequest(BaseModel):
+    type: str  # "file" or "dir"
+    path: str
+
+class BrowseItem(BaseModel):
+    name: str
+    path: str
+    is_directory: bool
+
+class BrowseResponse(BaseModel):
+    items: list[BrowseItem]
+    current_path: str

@@ -19,7 +19,8 @@ from models import (
     TemplateRequest, TemplateResponse, WebhookPayload, QueueStatusResponse,
     ChatHistoryRequest, ChatHistoryResponse, ChatMessage,
     ReindexRequest, ReindexResponse,
-    SavePromptResponseRequest, SavePromptResponseResponse
+    SavePromptResponseRequest, SavePromptResponseResponse,
+    BrowseRequest, BrowseResponse, BrowseItem
 )
 from job_queue import JobQueue, JobStatus
 
@@ -436,89 +437,65 @@ async def get_chat_history(request: ChatHistoryRequest):
             # Ler conteúdo do arquivo
             content = md_file.read_text(encoding="utf-8")
             
-            # Usar markdown-it-py para parsear o markdown
-            from markdown_it import MarkdownIt
-            
-            md = MarkdownIt()
-            tokens = md.parse(content)
-            
-            # Extrair título, pergunta e resposta
+            # Extrair título, pergunta e resposta usando regex
+            # Formato esperado: # Título (opcional)\n\n# Pergunta:\n\n{pergunta}\n\n# Resposta\n\n{resposta}
             title = filename
             question = ""
             answer = ""
+            
+            # Tentar encontrar título (primeiro h1 que não seja Pergunta ou Resposta)
+            title_match = re.search(r'^#\s+([^P].*?)$', content, re.MULTILINE)
+            if title_match:
+                potential_title = title_match.group(1).strip()
+                # Verificar se não é Pergunta ou Resposta
+                if potential_title not in ['Pergunta', 'Pergunta:', 'Resposta']:
+                    title = potential_title
+            
+            # Usar método de linhas (mais robusto para conteúdo com headings aninhados)
+            # Dividir por linhas e procurar seções
+            lines = content.split('\n')
             current_section = None
-            current_content = []
+            section_content = []
+            title_found_alt = (title != filename)
             
-            i = 0
-            while i < len(tokens):
-                token = tokens[i]
-                
-                # Procurar por heading (h1, h2, etc)
-                if token.type == 'heading_open':
-                    level = int(token.tag[1])  # 'h1' -> 1, 'h2' -> 2, etc
-                    # Próximo token deve ser inline com o texto
-                    if i + 1 < len(tokens) and tokens[i + 1].type == 'inline':
-                        heading_text = tokens[i + 1].content.strip()
-                        
-                        if heading_text == 'Pergunta':
-                            # Salvar conteúdo anterior se houver
-                            if current_section == 'question':
-                                question = '\n'.join(current_content).strip()
-                            current_section = 'question'
-                            current_content = []
-                        elif heading_text == 'Resposta':
-                            # Salvar pergunta se estava coletando
-                            if current_section == 'question':
-                                question = '\n'.join(current_content).strip()
-                            current_section = 'answer'
-                            current_content = []
-                        elif level == 1:
-                            # Primeiro h1 é o título
-                            title = heading_text
+            for line in lines:
+                # Verificar se é um heading de nível 1 (# Pergunta ou # Resposta)
+                # Só considerar headings de nível 1 para delimitar seções principais
+                heading_match = re.match(r'^#\s+(.+)$', line)
+                if heading_match:
+                    heading_text = heading_match.group(1).strip().rstrip(':')
+                    # Salvar seção anterior antes de mudar
+                    if current_section == 'question':
+                        question = '\n'.join(section_content).strip()
+                    elif current_section == 'answer':
+                        answer = '\n'.join(section_content).strip()
                     
-                    # Pular heading_open, inline e heading_close
-                    i += 3 if i + 2 < len(tokens) and tokens[i + 2].type == 'heading_close' else 2
-                    continue
-                
-                # Coletar conteúdo quando em uma seção
-                if current_section:
-                    # Coletar parágrafos
-                    if token.type == 'paragraph_open':
-                        # Próximo token deve ser inline com o conteúdo
-                        if i + 1 < len(tokens) and tokens[i + 1].type == 'inline':
-                            para_content = tokens[i + 1].content.strip()
-                            if para_content:
-                                current_content.append(para_content)
-                        # Pular paragraph_open, inline e possivelmente paragraph_close
-                        skip_count = 2
-                        if i + 2 < len(tokens) and tokens[i + 2].type == 'paragraph_close':
-                            skip_count = 3
-                        i += skip_count
-                        continue
-                    # Parar ao encontrar horizontal rule
-                    elif token.type == 'hr':
-                        if current_section == 'answer':
-                            answer = '\n'.join(current_content).strip()
-                            current_section = None
-                            current_content = []
-                            break  # Parar de processar após encontrar ---
-                    # Ignorar tokens de fechamento
-                    elif token.type in ['heading_close', 'paragraph_close']:
-                        pass  # Apenas ignorar e continuar
-                
-                i += 1
+                    # Determinar nova seção (apenas headings de nível 1)
+                    if heading_text == 'Pergunta':
+                        current_section = 'question'
+                        section_content = []
+                    elif heading_text == 'Resposta':
+                        current_section = 'answer'
+                        section_content = []
+                    elif not title_found_alt and heading_text not in ['Pergunta', 'Resposta', 'Pergunta:', 'Resposta:']:
+                        # É um título - salvar seção anterior e parar de coletar
+                        if current_section == 'question':
+                            question = '\n'.join(section_content).strip()
+                        elif current_section == 'answer':
+                            answer = '\n'.join(section_content).strip()
+                        title = heading_text
+                        title_found_alt = True
+                        current_section = None
+                        section_content = []
+                elif current_section:
+                    # Adicionar conteúdo à seção atual (inclui headings aninhados, parágrafos, etc)
+                    section_content.append(line)
             
-            # Salvar última seção se ainda estava coletando
+            # Salvar última seção
             if current_section == 'question':
-                question = '\n'.join(current_content).strip()
+                question = '\n'.join(section_content).strip()
             elif current_section == 'answer':
-                answer = '\n'.join(current_content).strip()
-            
-            # Se ainda não encontrou título, tentar regex como fallback
-            if title == filename:
-                title_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
-                if title_match:
-                    title = title_match.group(1).strip()
+                answer = '\n'.join(section_content).strip()
             
             # Debug: imprimir se não encontrou (apenas para alguns arquivos)
             if (not question or not answer) and len(messages) < 2:
@@ -527,10 +504,9 @@ async def get_chat_history(request: ChatHistoryRequest):
                 print(f"  Pergunta encontrada: {bool(question)}, tamanho: {len(question)}")
                 print(f"  Resposta encontrada: {bool(answer)}, tamanho: {len(answer)}")
                 if not question or not answer:
-                    print(f"  Primeiros 30 tokens:")
-                    for j, t in enumerate(tokens[:min(30, len(tokens))]):
-                        content_preview = getattr(t, 'content', '')[:50] if hasattr(t, 'content') else ''
-                        print(f"    [{j}] {t.type} (tag={getattr(t, 'tag', '')}): {content_preview}")
+                    print(f"  Primeiras 20 linhas do conteúdo:")
+                    for j, line in enumerate(content.split('\n')[:20]):
+                        print(f"    [{j}] {line[:80]}")
             
             messages.append(ChatMessage(
                 filename=filename,
@@ -669,6 +645,80 @@ async def save_prompt_response(request: SavePromptResponseRequest):
             message="Erro ao salvar resposta",
             error=str(e)
         )
+
+@app.post("/api/browse", response_model=BrowseResponse)
+async def browse_path(request: BrowseRequest):
+    """Lista diretórios e arquivos .md baseado no path fornecido"""
+    if request.type not in ["file", "dir"]:
+        raise HTTPException(status_code=400, detail="type deve ser 'file' ou 'dir'")
+    
+    try:
+        # Validar e resolver path
+        try:
+            path_obj = validate_path(request.path)
+        except (PermissionError, OSError) as e:
+            raise HTTPException(status_code=403, detail=f"Sem permissão para acessar o diretório: {str(e)}")
+        
+        try:
+            if not path_obj.is_dir():
+                raise HTTPException(status_code=400, detail="Path deve ser um diretório")
+        except (PermissionError, OSError) as e:
+            raise HTTPException(status_code=403, detail=f"Sem permissão para acessar o diretório: {str(e)}")
+        
+        items = []
+        
+        # Listar todos os itens no diretório, ignorando erros de permissão
+        try:
+            dir_items = path_obj.iterdir()
+        except (PermissionError, OSError) as e:
+            raise HTTPException(status_code=403, detail=f"Sem permissão para listar o diretório: {str(e)}")
+        
+        for item in dir_items:
+            try:
+                # Verificar se pode acessar o item (evitar Permission denied)
+                if not item.exists():
+                    continue
+                
+                # Se type é "dir", retornar apenas diretórios
+                if request.type == "dir":
+                    if item.is_dir():
+                        items.append(BrowseItem(
+                            name=item.name,
+                            path=str(item),
+                            is_directory=True
+                        ))
+                # Se type é "file", retornar diretórios e arquivos .md
+                elif request.type == "file":
+                    if item.is_dir():
+                        items.append(BrowseItem(
+                            name=item.name,
+                            path=str(item),
+                            is_directory=True
+                        ))
+                    elif item.is_file() and item.suffix.lower() == ".md":
+                        items.append(BrowseItem(
+                            name=item.name,
+                            path=str(item),
+                            is_directory=False
+                        ))
+            except (PermissionError, OSError) as e:
+                print(f"Erro ao acessar item: {e}")
+                continue
+            except Exception as e:
+                # Ignorar outros erros ao acessar itens individuais
+                continue
+        
+        # Ordenar: diretórios primeiro, depois arquivos, ambos alfabeticamente
+        items.sort(key=lambda x: (not x.is_directory, x.name.lower()))
+        
+        return BrowseResponse(
+            items=items,
+            current_path=str(path_obj)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao listar diretório: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -425,6 +425,12 @@ export default function PromptTab() {
                     return;
                   }
 
+                  const baseDir = storage.getBaseDir();
+                  if (!baseDir) {
+                    setSaveError('Configure o BASE_DIR nas configurações primeiro');
+                    return;
+                  }
+
                   if (!saveAnswer.trim()) {
                     setSaveError('Digite uma resposta');
                     return;
@@ -439,6 +445,7 @@ export default function PromptTab() {
                       question: question || '',
                       answer: saveAnswer,
                       chat_history_dir: chatHistoryDir,
+                      base_dir: baseDir,
                     });
 
                     if (response.success) {

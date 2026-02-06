@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { storage, PathAlias } from '../utils/storage';
+import PathInput from './PathInput';
 
 interface ConfigModalProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ export default function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProp
         {aliases.length > 0 && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Aliases Salvos
+              Aliases Salvossd
             </label>
             <div className="grid grid-cols-1 gap-2">
               {aliases.map((a) => (
@@ -121,37 +122,16 @@ export default function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProp
           </div>
         )}
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            BASE_DIR
-          </label>
-          <input
-            type="text"
-            value={baseDir}
-            onChange={(e) => setBaseDir(e.target.value)}
-            placeholder="/caminho/para/base/dir"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Caminho absoluto para o diretório base do projeto
-          </p>
-          {baseDirHistory.length > 0 && (
-            <div className="mt-2">
-              <p className="text-xs text-gray-600 mb-1">Histórico:</p>
-              <div className="flex flex-wrap gap-1">
-                {baseDirHistory.map((path, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSelectFromHistory(path, 'base')}
-                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                  >
-                    {path}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <PathInput
+          label="BASE_DIR"
+          value={baseDir}
+          onChange={setBaseDir}
+          placeholder="/caminho/para/base/dir"
+          description="Caminho absoluto para o diretório base do projeto"
+          history={baseDirHistory}
+          onSelectFromHistory={(path) => handleSelectFromHistory(path, 'base')}
+          selectDirectory={true}
+        />
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -26,6 +26,9 @@ def get_base_dir():
         raise ValueError("BASE_DIR não configurado na variável de ambiente ou arquivo .env")
     return Path(base_dir)
 
+# Embeddings (criado uma vez, reutilizado)
+embeddings = OllamaEmbeddings(model=EMBEDDINGS_MODEL)
+
 # Prompt original (idêntico ao do chat)
 prompt = PromptTemplate(
     template="""
@@ -324,14 +327,39 @@ def generate_prompt_markdown(question: str, base_dir: str = None, retriever_k: i
     if base_dir is None:
         base_dir = str(get_base_dir())
     else:
-        base_dir = str(base_dir)  # Garantir que é string
+        # Garantir que base_dir é um Path absoluto
+        base_dir_path = Path(base_dir).resolve()
+    
+    # Converter para string para uso consistente em todas as operações
+    base_dir_str = str(base_dir_path)
+    
+    # Verificar se existe prompt.md customizado no base_dir
+    prompt_template = None
+    prompt_file = base_dir_path / "prompt.md"
+    if prompt_file.exists() and prompt_file.is_file():
+        # Ler o template customizado do arquivo
+        try:
+            custom_template_str = prompt_file.read_text(encoding="utf-8")
+            # Criar PromptTemplate com o conteúdo do arquivo
+            prompt_template = PromptTemplate(
+                template=custom_template_str,
+                input_variables=["context", "question"]
+            )
+        except Exception as e:
+            # Se houver erro ao ler, usar o template padrão
+            print(f"⚠️ Erro ao ler prompt.md: {e}. Usando template padrão.")
+            prompt_template = prompt
+    else:
+        # Usar o template padrão
+        prompt_template = prompt
     
     # Usar retriever_k fornecido ou fallback para RETRIEVER_K do .env
     if retriever_k is None:
         retriever_k = RETRIEVER_K
     
     # Carregar vectorstore dinamicamente baseado no base_dir
-    vectorstore_path = os.path.join(base_dir)
+    # FAISS.load_local espera o diretório onde estão os arquivos index.faiss e index.pkl
+    vectorstore_path = base_dir_str
     # Sempre carregar do base_dir fornecido (não usar cache global)
     local_vectorstore = FAISS.load_local(
         vectorstore_path,
@@ -341,7 +369,7 @@ def generate_prompt_markdown(question: str, base_dir: str = None, retriever_k: i
     local_retriever = local_vectorstore.as_retriever(search_kwargs={"k": retriever_k})
     
     # Tenta obter as prioridades do .rag_priorities (se existir)
-    entries = _read_rag_priorities(base_dir)
+    entries = _read_rag_priorities(base_dir_str)
 
     # Filtra entradas com priority == -1 (não usar no contexto)
     if entries:
@@ -362,7 +390,7 @@ def generate_prompt_markdown(question: str, base_dir: str = None, retriever_k: i
         for doc in candidates:
             src = doc.metadata.get("source", "") or ""
             try:
-                relsrc = os.path.relpath(src, base_dir)
+                relsrc = os.path.relpath(src, base_dir_str)
             except Exception:
                 relsrc = src
             matched = False
@@ -526,7 +554,7 @@ def generate_prompt_markdown(question: str, base_dir: str = None, retriever_k: i
         source = doc.metadata.get("source")
         if source:
             try:
-                source = os.path.relpath(source, base_dir)
+                source = os.path.relpath(source, base_dir_str)
             except ValueError:
                 pass
             sources.append(source)
