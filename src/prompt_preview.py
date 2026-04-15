@@ -598,6 +598,8 @@ def generate_prompt_markdown(question: str, base_dir: str = None, retriever_k: i
 
 {rendered_prompt.strip()}
 
+
+Nota: Ao final da resposta inclua de 3 a 5 hashtags contextuais referentes a pergunta ou a resposta data
 ```
 
 ---

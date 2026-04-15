@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryState } from 'nuqs';
 import ReactMarkdown from 'react-markdown';
 import { api, PromptRequest, TemplateRequest } from '../services/api';
 import { storage } from '../utils/storage';
+import {
+  applyPromptQueryPairToParams,
+  buildPromptQueryPair,
+  generateShareQuery,
+  getInitialPromptTextFromSearch,
+} from '../utils/promptShareQuery';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 
 export default function PromptTab() {
-  const [question, setQuestion] = useQueryState('prompt_question');
-  const [markdown, setMarkdown] = useQueryState('prompt_markdown');
+  const [text, setText] = useState(() => getInitialPromptTextFromSearch());
+  const [markdown, setMarkdown] = useState('');
   const [templateTitle, setTemplateTitle] = useQueryState('template_title');
   const [templateDestination, setTemplateDestination] = useQueryState('template_destination');
   const [templateMarkdown, setTemplateMarkdown] = useQueryState('template_markdown');
@@ -15,6 +23,7 @@ export default function PromptTab() {
   const [error, setError] = useState<string | null>(null);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [templateCopied, setTemplateCopied] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveAnswer, setSaveAnswer] = useState('');
@@ -24,7 +33,47 @@ export default function PromptTab() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [retrieverK, setRetrieverK] = useState<number>(16);
   const [chatSpanHours, setChatSpanHours] = useState<number>(2);
+
+  /** Após 2s sem edição, sincroniza `prompt_question` na URL (sem navegar). */
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
   
+      params.delete('q');
+  
+      const hasText = !!text.trim();
+  
+      if (!hasText) {
+        params.delete('prompt_question');
+      } else {
+        let finalText = text;
+  
+        // 🔥 regra de truncamento (se necessário)
+        if (finalText.length > 5000) {
+          finalText =
+            '--- [Texto truncado] ---\n\n' +
+            finalText.substring(0, 2000);
+        }
+  
+        const safeText = finalText.substring(0, 5000);
+  
+        const pair = buildPromptQueryPair(safeText, 'prompt_question');
+        applyPromptQueryPairToParams(params, pair);
+      }
+  
+      const search = params.toString();
+  
+      const next =
+        window.location.pathname +
+        (search ? `?${search}` : '') +
+        window.location.hash;
+  
+      window.history.replaceState(null, '', next);
+    }, 2000);
+  
+    return () => window.clearTimeout(id);
+  }, [text]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -36,11 +85,11 @@ export default function PromptTab() {
 
     setLoading(true);
     setError(null);
-    setMarkdown(null);
+    setMarkdown('');
 
     try {
       const request: PromptRequest = {
-        question: question || '',
+        question: text || '',
         base_dir: baseDir,
         retriever_k: showAdvanced ? retrieverK : undefined,
         chat_span: showAdvanced ? chatSpanHours : undefined,
@@ -63,6 +112,18 @@ export default function PromptTab() {
     setTimeout(() => {
       setCopied(false);
     }, 2000);
+  };
+
+  const handleShare = async () => {
+    const query = generateShareQuery(text);
+    const url = `${window.location.origin}${window.location.pathname}?${query}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // ignore
+    }
   };
 
   const handleTemplateSubmit = async (e: React.FormEvent) => {
@@ -116,6 +177,85 @@ export default function PromptTab() {
     }, 2000);
   };
 
+  const [promptCollapsed, setPromptCollapsed] = useState<boolean>(false);
+  // set collapsed on new markdown
+  useEffect(() => {
+    if (markdown && markdown.length > 600) {
+      setPromptCollapsed(true);
+    } else {
+      setPromptCollapsed(false);
+    }
+  }, [markdown]);
+
+  const truncateMarkdown = (md: string, limit: number) => {
+    if (!md || md.length <= limit) return md;
+    const lines = md.split(/\r?\n/);
+    const out: string[] = [];
+    let len = 0;
+    let inFence = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const addLen = line.length + 1; // account for newline
+      const startsFence = line.trim().startsWith('```');
+      if (!inFence && startsFence) {
+        // start fence
+        if (len + addLen <= limit) {
+          out.push(line);
+          len += addLen;
+          inFence = true;
+          continue;
+        } else {
+          // not enough room for fence line; stop and append ellipsis
+          return out.join('\n') + '\n...';
+        }
+      }
+
+      if (inFence) {
+        // inside fenced block
+        if (len + addLen <= limit) {
+          out.push(line);
+          len += addLen;
+          if (startsFence) {
+            inFence = false; // closing fence
+          }
+          continue;
+        } else {
+          // truncated inside fence: include partial and close fence
+          const remaining = Math.max(0, limit - len);
+          if (remaining > 0) {
+            out.push(line.slice(0, remaining));
+          }
+          out.push('```'); // ensure closed
+          return out.join('\n') + '\n...';
+        }
+      } else {
+        // not in fence
+        if (len + addLen <= limit) {
+          out.push(line);
+          len += addLen;
+          continue;
+        } else {
+          // need to truncate this line
+          const remaining = Math.max(0, limit - len);
+          if (remaining > 0) {
+            out.push(line.slice(0, remaining));
+            return out.join('\n') + '...';
+          } else {
+            return out.join('\n') + '...';
+          }
+        }
+      }
+    }
+    // end, if still in fence close it
+    if (inFence) out.push('```');
+    return out.join('\n');
+  };
+  // collapse by default if large
+  if (!promptCollapsed && markdown && markdown.length > 600) {
+    // initialize collapsed true only on first render with content
+    // but avoid setting state during render - instead set default in useState is enough
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Seção de Gerar Prompt */}
@@ -129,34 +269,37 @@ export default function PromptTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col">
               <textarea
-                value={question || ''}
-                onChange={(e) => setQuestion(e.target.value)}
+                value={text} 
+                onChange={(e) => setText(e.target.value)}
                 placeholder="Digite a pergunta em markdown para gerar o prompt..."
-                className="flex-1 min-h-[200px] px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none"
+                className="ui-textarea min-h-[200px] text-sm h-full"
                 disabled={loading}
               />
             </div>
             <div className="flex flex-col">
               <div className="text-sm font-medium text-gray-700 mb-2">Preview</div>
-              <div className="flex-1 min-h-[200px] overflow-auto p-4 bg-gray-50 border border-gray-300 rounded-md">
-                {question && question.trim() ? (
+              <div className="ui-panel h-full overflow-auto p-4 bg-white">
+                {text && text.trim() ? (
                   <ReactMarkdown
+                   className="text-gray-100 bg-gray-100  px-4"
                     components={{
-                      p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-800">{children}</p>,
+                      p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-900">{children}</p>,
                       h1: ({ children }: any) => <h1 className="text-xl font-bold mb-2 text-gray-900">{children}</h1>,
                       h2: ({ children }: any) => <h2 className="text-lg font-bold mb-2 text-gray-900">{children}</h2>,
                       h3: ({ children }: any) => <h3 className="text-base font-bold mb-1 text-gray-900">{children}</h3>,
                       ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 text-gray-800">{children}</ul>,
                       ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 text-gray-800">{children}</ol>,
+                      line: ({ _children }: any) => <hr className="my-4 border-gray-200 h-px"/>,
+                      
                       li: ({ children }: any) => <li className="mb-1">{children}</li>,
                       code: ({ children }: any) => <code className="bg-gray-200 px-1 rounded text-xs text-gray-900">{children}</code>,
                       pre: ({ children }: any) => <pre className="bg-gray-200 p-2 rounded text-xs overflow-x-auto mb-2 text-gray-900">{children}</pre>,
                       strong: ({ children }: any) => <strong className="font-bold">{children}</strong>,
                       em: ({ children }: any) => <em className="italic">{children}</em>,
-                      blockquote: ({ children }: any) => <blockquote className="border-l-4 border-gray-400 pl-4 italic mb-2 text-gray-700">{children}</blockquote>,
+                      blockquote: ({ children }: any) => <blockquote className="border-l-4  border-gray-400 pl-4 italic mb-2 text-gray-700">{children}</blockquote>,
                     }}
                   >
-                    {question}
+                    {text}
                   </ReactMarkdown>
                 ) : (
                   <p className="text-gray-400 italic">Preview aparecerá aqui...</p>
@@ -184,13 +327,12 @@ export default function PromptTab() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   RETRIEVER_K (Número de documentos a recuperar)
                 </label>
-                <input
+                <Input
                   type="number"
-                  min="1"
-                  max="100"
+                  min={1}
+                  max={100}
                   value={retrieverK}
                   onChange={(e) => setRetrieverK(parseInt(e.target.value) || 16)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={loading}
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -202,14 +344,13 @@ export default function PromptTab() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Horas de Contexto de Conversa
                 </label>
-                <input
+                <Input
                   type="number"
-                  min="0"
-                  max="168"
-                  step="0.5"
+                  min={0}
+                  max={168}
+                  step={0.5}
                   value={chatSpanHours}
                   onChange={(e) => setChatSpanHours(parseFloat(e.target.value) || 2)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={loading}
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -220,40 +361,52 @@ export default function PromptTab() {
           )}
         </div>
         
-        <div className="flex justify-end">
-          <button
+        <div className="flex justify-end gap-2 flex-wrap">
+          <Button
+            type="button"
+            onClick={handleShare}
+            disabled={!text.trim()}
+            variant="ghost"
+          >
+            {shareCopied ? 'Link copiado' : 'Compartilhar'}
+          </Button>
+          <Button
             type="submit"
-            disabled={loading || !(question || '').trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            disabled={loading || !text.trim()}
+            variant="primary"
           >
             {loading ? 'Gerando...' : 'Gerar Prompt'}
-          </button>
+          </Button>
         </div>
       </form>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-3 bg-red-100 border  text-red-700 rounded">
           {error}
         </div>
       )}
 
       {markdown && markdown.trim() && (
         <div className="flex-1 flex flex-col">
-          <div className="mb-2 flex justify-end gap-2">
-            <button
-              onClick={() => setSaveModalOpen(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-            >
-              Salvar Resposta
-            </button>
-            <button
-              onClick={handleCopy}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
-            >
-              {copied ? 'Copiado' : 'Copiar'}
-            </button>
+          <div className="mb-2 flex justify-between items-center gap-2">
+            <div className="flex gap-2">
+              <Button onClick={() => setSaveModalOpen(true)} className="bg-green-600 hover:bg-green-700" variant="primary">
+                Salvar Resposta
+              </Button>
+              <Button onClick={handleCopy} className="ml-2" variant="ghost">
+                {copied ? 'Copiado' : 'Copiar'}
+              </Button>
+            </div>
+            {markdown && markdown.length > 600 && (
+              <button
+                onClick={() => setPromptCollapsed((s) => !s)}
+                className="text-sm text-gray-300 bg-gray-800/20 px-2 py-1 rounded"
+              >
+                {promptCollapsed ? 'Expandir prompt' : 'Colapsar prompt (600c)'}
+              </button>
+            )}
           </div>
-          <div className="flex-1 overflow-auto p-4 bg-gray-50 rounded-md">
+          <div className="flex-1 overflow-auto p-4 bg-gray-50 rounded-md max-h-[50vh]">
             <ReactMarkdown
               components={{
                 p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-800">{children}</p>,
@@ -270,7 +423,7 @@ export default function PromptTab() {
                 blockquote: ({ children }: any) => <blockquote className="border-l-4 border-gray-400 pl-4 italic mb-2 text-gray-700">{children}</blockquote>,
               }}
             >
-              {markdown}
+              {promptCollapsed ? (markdown ? truncateMarkdown(markdown, 600) : '') : (markdown || '')}
             </ReactMarkdown>
           </div>
         </div>
@@ -323,7 +476,7 @@ export default function PromptTab() {
         </form>
 
         {templateError && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-100 border  text-red-700 rounded">
             {templateError}
           </div>
         )}
@@ -372,10 +525,10 @@ export default function PromptTab() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Pergunta
               </label>
-              <textarea
-                value={question || ''}
+            <textarea
+                value={text}
                 readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"
+                className="ui-textarea bg-slate-800"
                 rows={3}
               />
             </div>
@@ -388,13 +541,13 @@ export default function PromptTab() {
                 value={saveAnswer}
                 onChange={(e) => setSaveAnswer(e.target.value)}
                 placeholder="Digite a resposta aqui..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                className="ui-textarea min-h-[160px]"
                 rows={10}
               />
             </div>
 
             {saveError && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="mb-4 p-3 bg-red-100 border  text-red-700 rounded">
                 {saveError}
               </div>
             )}
@@ -406,18 +559,18 @@ export default function PromptTab() {
             )}
 
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 onClick={() => {
                   setSaveModalOpen(false);
                   setSaveAnswer('');
                   setSaveError(null);
                   setSaveSuccess(null);
                 }}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                variant="ghost"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={async () => {
                   const chatHistoryDir = storage.getChatHistoryDir();
                   if (!chatHistoryDir) {
@@ -442,7 +595,7 @@ export default function PromptTab() {
 
                   try {
                     const response = await api.savePromptResponse({
-                      question: question || '',
+                      question: text || '',
                       answer: saveAnswer,
                       chat_history_dir: chatHistoryDir,
                       base_dir: baseDir,
@@ -466,10 +619,10 @@ export default function PromptTab() {
                   }
                 }}
                 disabled={saveLoading || !saveAnswer.trim()}
-                className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                variant="primary"
               >
                 {saveLoading ? 'Salvando...' : 'Salvar'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

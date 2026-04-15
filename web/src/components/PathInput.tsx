@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { api, BrowseItem } from '../services/api';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
 
 interface PathInputProps {
   label: string;
@@ -35,6 +37,7 @@ export default function PathInput({
   const [currentDir, setCurrentDir] = useState<string>('');
   const [openCurrentInput, setOpenCurrentInput] = useState(false);
   const isRevertingRef = useRef(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Inicializar rootPath quando o modal abre
   useEffect(() => {
@@ -62,24 +65,22 @@ export default function PathInput({
     }
   }, [isModalOpen, pathSegments, rootPath]);
 
+  const getCurrentPath = (): string => {
+    if (pathSegments.length === 0) {
+      return rootPath || '/';
+    }
+    if (rootPath.startsWith('/')) {
+      return rootPath + '/' + pathSegments.join('/');
+    }
+    return pathSegments.join('/');
+  };
+
   const loadItems = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Construir path completo a partir dos segmentos
-      let currentPath: string;
-      if (pathSegments.length === 0) {
-        currentPath = rootPath || '/';
-      } else {
-        // Se rootPath começa com /, é absoluto
-        if (rootPath.startsWith('/')) {
-          currentPath = rootPath + '/' + pathSegments.join('/');
-        } else {
-          // Caso contrário, construir relativo
-          currentPath = pathSegments.join('/');
-        }
-      }
+      const currentPath = getCurrentPath();
 
       const response = await api.browse({
         type: selectFile ? 'file' : 'dir',
@@ -186,6 +187,39 @@ export default function PathInput({
     }
   };
 
+  const handleConfirmCurrentDir = async () => {
+    const name = currentDir.trim();
+    if (!name) {
+      setOpenCurrentInput(false);
+      setCurrentDir('');
+      return;
+    }
+    const parentPath = getCurrentPath();
+    setOpenCurrentInput(false);
+    setCurrentDir('');
+    setError(null);
+    setLoading(true);
+    try {
+      const targetPath = parentPath.endsWith('/') ? parentPath + name : parentPath + '/' + name;
+      const exists = currentItems.some((item) => item.is_directory && item.name === name);
+      if (!exists) {
+        try {
+          await api.browse({ type: 'dir', path: targetPath });
+        } catch {
+          await api.createDirectory({ parent_path: parentPath, name });
+        }
+      }
+      setPreviousPathSegments([...pathSegments]);
+      setPathSegments([...pathSegments, name]);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao acessar/criar diretório');
+      isRevertingRef.current = true;
+      setPathSegments([...previousPathSegments]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -211,21 +245,21 @@ export default function PathInput({
           {label}
         </label>
         <div className="flex gap-2">
-          <input
+          <Input
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button
+          <Button
             type="button"
             onClick={handleBrowseClick}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
-            title={selectDirectory ? "Selecionar diretório" : "Selecionar arquivo"}
+            className="px-3 py-2"
+            variant="ghost"
+            title={selectDirectory ? 'Selecionar diretório' : 'Selecionar arquivo'}
           >
-            {selectDirectory ? "📁" : "📄"}
-          </button>
+            {selectDirectory ? '📁' : '📄'}
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -240,14 +274,14 @@ export default function PathInput({
             {description}
           </p>
         )}
-        {history.length > 0 && onSelectFromHistory && (
+        {showHistory && (
           <div className="mt-2">
             <p className="text-xs text-gray-600 mb-1">Histórico:</p>
             <div className="flex flex-wrap gap-1">
               {history.map((path, idx) => (
                 <button
                   key={idx}
-                  onClick={() => onSelectFromHistory(path)}
+                  onClick={() => onSelectFromHistory?.(path)}
                   className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                 >
                   {path}
@@ -257,6 +291,13 @@ export default function PathInput({
             </div>
           </div>
         )}
+        <button
+          type="button"
+          onClick={() => setShowHistory(!showHistory)}
+          className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+        >
+          {showHistory ? 'Ocultar histórico' : 'Mostrar histórico'}
+        </button>
       </div>
 
       {/* Modal de navegação */}
@@ -302,36 +343,60 @@ export default function PathInput({
                     </button>
                   </span>
                 ))}
-                 <div className="flex items-center gap-2 w-5 rounded-md p-2" onClick={() => setOpenCurrentInput(!openCurrentInput)}>
-                {openCurrentInput && (
-                  <input
-                  onClick={(e)=>e.stopPropagation()}
-                  onBlur={() => {
-                    if (currentDir.trim()) {
-                      setOpenCurrentInput(false)
-                      setPreviousPathSegments([...pathSegments]);
-                      setPathSegments([...pathSegments, currentDir.trim()])
-                      setCurrentDir('')
-                    } else {
-                      setOpenCurrentInput(false)
-                      setCurrentDir('')
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && currentDir.trim()) {
-                      setOpenCurrentInput(false)
-                      setPreviousPathSegments([...pathSegments]);
-                      setPathSegments([...pathSegments, currentDir.trim()])
-                      setCurrentDir('')
-                    }
-                  }}
-                    type="text"
-                    value={currentDir}
-                    onChange={(e) => setCurrentDir(e.target.value)}
-                    className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-              </div>
+                <div className="flex items-center gap-2">
+                  {openCurrentInput ? (
+                    <>
+                      <Input
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={() => {
+                          if (!currentDir.trim()) {
+                            setOpenCurrentInput(false);
+                            setCurrentDir('');
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleConfirmCurrentDir();
+                          }
+                          if (e.key === 'Escape') {
+                            setOpenCurrentInput(false);
+                            setCurrentDir('');
+                          }
+                        }}
+                        type="text"
+                        value={currentDir}
+                        onChange={(e) => setCurrentDir(e.target.value)}
+                        placeholder="Nome da pasta"
+                        className="w-40"
+                        autoFocus
+                      />
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConfirmCurrentDir();
+                        }}
+                        variant="primary"
+                        className="px-2 py-1 text-sm"
+                      >
+                        Criar diretório
+                      </Button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenCurrentInput(true);
+                      }}
+                      className="px-2 py-1 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                      title="Criar novo diretório"
+                    >
+                      + Nova pasta
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

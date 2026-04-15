@@ -11,3 +11,63 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --surface-1: #0b1220;
+  --surface-2: #11284c;
+  --muted: #94a3b8;
+  --border: #132845;
+  --accent: #7c3aed;
+  --success: #10b981;
+  --danger: #ef4444;
+}
+
+/* ResizableLayout: alternância só entre .resizable-layout-pane (handles/divisores não entram na contagem). */
+.resizable-layout > :nth-child(odd of .resizable-layout-pane) {
+  background-color: var(--surface-1);
+}
+.resizable-layout > :nth-child(even of .resizable-layout-pane) {
+  background-color: var(--surface-2);
+}
+
+.invisible-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  &::-webkit-scrollbar-track {
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    display: none;
+  }
+}
+
+/* shadcn-like utility components (dark-friendly) */
+.ui-input {
+  @apply w-full px-3 py-2 rounded-md border bg-slate-800 text-slate-100 border-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500;
+}
+
+.ui-textarea {
+  @apply w-full px-3 py-2 rounded-md border bg-slate-800 text-slate-100 border-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono resize-none;
+}
+
+.ui-btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition;
+}
+.ui-btn-primary {
+  @apply bg-violet-600 text-white hover:bg-violet-700;
+}
+.ui-btn-ghost {
+  @apply bg-transparent text-slate-100 hover:bg-white/5;
+}
+.ui-panel {
+  @apply bg-slate-900 border border-slate-800 rounded-md p-4;
+}
+
+.console-output {
+  @apply font-mono text-sm bg-black text-green-200 p-3 rounded-md overflow-auto;
+}

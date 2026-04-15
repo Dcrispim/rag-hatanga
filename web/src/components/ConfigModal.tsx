@@ -95,7 +95,7 @@ export default function ConfigModal({ isOpen, onClose, onSave }: ConfigModalProp
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Aliases Salvossd
             </label>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 h-full	">
               {aliases.map((a) => (
                 <div
                   key={a.alias}

@@ -112,6 +112,30 @@ export interface BrowseResponse {
   current_path: string;
 }
 
+export interface CreateDirectoryRequest {
+  parent_path: string;
+  name: string;
+}
+
+export interface CreateDirectoryResponse {
+  success: boolean;
+  message: string;
+  path?: string;
+  error?: string;
+}
+
+export interface CreateRepoRequest {
+  parent_path: string;
+  name: string;
+}
+
+export interface CreateRepoResponse {
+  success: boolean;
+  message: string;
+  path?: string;
+  error?: string;
+}
+
 export const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
     const response = await fetch(`${API_BASE}/chat`, {
@@ -283,6 +307,39 @@ export const api = {
       throw new Error(error.detail || 'Erro ao listar diretório');
     }
     
+    return response.json();
+  },
+
+  createDirectory: async (request: CreateDirectoryRequest): Promise<CreateDirectoryResponse> => {
+    const response = await fetch(`${API_BASE}/directory`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao criar diretório');
+    }
+    
+    return response.json();
+  },
+  createRepo: async (request: CreateRepoRequest): Promise<CreateRepoResponse> => {
+    const response = await fetch(`${API_BASE}/create_repo`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: `Erro ${response.status}` }));
+      throw new Error(error.detail || 'Erro ao criar repositório');
+    }
+
     return response.json();
   },
 };
