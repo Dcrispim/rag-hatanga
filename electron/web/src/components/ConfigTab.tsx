@@ -126,7 +126,8 @@ export default function ConfigTab() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Aliases Salvos
           </label>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2 h-full">
+            sd
             {aliases.map((a) => (
               <div
                 key={a.alias}
@@ -296,7 +297,7 @@ export default function ConfigTab() {
         </div>
 
         {reindexError && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-100 border text-red-700 rounded">
             {reindexError}
           </div>
         )}

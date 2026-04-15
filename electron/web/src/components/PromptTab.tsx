@@ -1,11 +1,26 @@
 import { useState } from 'react';
-import { useQueryState } from 'nuqs';
+import { createParser, useQueryState } from 'nuqs';
 import ReactMarkdown from 'react-markdown';
 import { api, PromptRequest, TemplateRequest } from '../services/api';
 import { storage } from '../utils/storage';
 
+/** Grava na query com encodeURIComponent; lê com decodeURIComponent (compatível com URLSearchParams). */
+const parseAsUrlEncodedPromptQuestion = createParser({
+  parse: (value) => {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  },
+  serialize: (value) => encodeURIComponent(value),
+});
+
 export default function PromptTab() {
-  const [question, setQuestion] = useQueryState('prompt_question');
+  const [question, setQuestion] = useQueryState(
+    'prompt_question',
+    parseAsUrlEncodedPromptQuestion,
+  );
   const [markdown, setMarkdown] = useQueryState('prompt_markdown');
   const [templateTitle, setTemplateTitle] = useQueryState('template_title');
   const [templateDestination, setTemplateDestination] = useQueryState('template_destination');
@@ -137,23 +152,24 @@ export default function PromptTab() {
               />
             </div>
             <div className="flex flex-col">
-              <div className="text-sm font-medium text-gray-700 mb-2">Preview</div>
-              <div className="flex-1 min-h-[200px] overflow-auto p-4 bg-gray-50 border border-gray-300 rounded-md">
+              <div className="text-sm font-medium text-gray-700 mb-2">Previews</div>
+              <div className="flex-1 min-h-[200px] overflow-auto p-4 bg-gray-50 border border-gray-300 rounded-md bg-black text-white ">\
+                <div className="text-white">
                 {question && question.trim() ? (
                   <ReactMarkdown
                     components={{
-                      p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-800">{children}</p>,
-                      h1: ({ children }: any) => <h1 className="text-xl font-bold mb-2 text-gray-900">{children}</h1>,
-                      h2: ({ children }: any) => <h2 className="text-lg font-bold mb-2 text-gray-900">{children}</h2>,
-                      h3: ({ children }: any) => <h3 className="text-base font-bold mb-1 text-gray-900">{children}</h3>,
-                      ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 text-gray-800">{children}</ul>,
-                      ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 text-gray-800">{children}</ol>,
-                      li: ({ children }: any) => <li className="mb-1">{children}</li>,
-                      code: ({ children }: any) => <code className="bg-gray-200 px-1 rounded text-xs text-gray-900">{children}</code>,
-                      pre: ({ children }: any) => <pre className="bg-gray-200 p-2 rounded text-xs overflow-x-auto mb-2 text-gray-900">{children}</pre>,
-                      strong: ({ children }: any) => <strong className="font-bold">{children}</strong>,
-                      em: ({ children }: any) => <em className="italic">{children}</em>,
-                      blockquote: ({ children }: any) => <blockquote className="border-l-4 border-gray-400 pl-4 italic mb-2 text-gray-700">{children}</blockquote>,
+                      p: ({ children }: any) => <p className="mb-2 last:mb-0 text-gray-800 color-white">{children}</p>,
+                      h1: ({ children }: any) => <h1 className="text-xl font-bold mb-2 text-gray-900 color-white">{children}</h1>,
+                      h2: ({ children }: any) => <h2 className="text-lg font-bold mb-2 text-gray-900 color-white">{children}</h2>,
+                      h3: ({ children }: any) => <h3 className="text-base font-bold mb-1 text-gray-900 color-white">{children}</h3>,
+                      ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 text-gray-800 color-white">{children}</ul>,
+                      ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 text-gray-800 color-white">{children}</ol>,
+                      li: ({ children }: any) => <li className="mb-1 color-white">{children}</li>,
+                      code: ({ children }: any) => <code className="bg-gray-200 px-1 rounded text-xs text-gray-900 color-white">{children}</code>,
+                      pre: ({ children }: any) => <pre className="bg-gray-200 p-2 rounded text-xs overflow-x-auto mb-2 text-gray-900 color-white">{children}</pre>,
+                      strong: ({ children }: any) => <strong className="font-bold color-white">{children}</strong>,
+                      em: ({ children }: any) => <em className="italic color-white">{children}</em>,
+                      blockquote: ({ children }: any) => <blockquote className="border-l-4 border-gray-400 pl-4 italic mb-2 text-gray-700 color-white">{children}</blockquote>,
                     }}
                   >
                     {question}
@@ -232,7 +248,7 @@ export default function PromptTab() {
       </form>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-3 bg-red-100 border  text-red-700 rounded">
           {error}
         </div>
       )}
@@ -323,7 +339,7 @@ export default function PromptTab() {
         </form>
 
         {templateError && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-100 border  text-red-700 rounded">
             {templateError}
           </div>
         )}
@@ -394,7 +410,7 @@ export default function PromptTab() {
             </div>
 
             {saveError && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="mb-4 p-3 bg-red-100 border  text-red-700 rounded">
                 {saveError}
               </div>
             )}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQueryState } from 'nuqs';
 import { api, ChatHistoryRequest } from '../services/api';
 import { storage } from '../utils/storage';
+import { Loader2Icon } from 'lucide-react';
 
 export default function HistoryTab() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -77,10 +78,17 @@ export default function HistoryTab() {
         >
           {loading ? 'Carregando...' : 'Filtrar'}
         </button>
+        <button
+          onClick={loadHistory}
+          disabled={loading}
+          className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {loading ? <Loader2Icon className="animate-spin" /> : 'Atualizar'}
+        </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-3 bg-red-100 border text-red-700 rounded">
           {error}
         </div>
       )}
