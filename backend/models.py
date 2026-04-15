@@ -94,3 +94,27 @@ class BrowseItem(BaseModel):
 class BrowseResponse(BaseModel):
     items: list[BrowseItem]
     current_path: str
+
+
+class CreateDirectoryRequest(BaseModel):
+    parent_path: str
+    name: str
+
+
+class CreateDirectoryResponse(BaseModel):
+    success: bool
+    message: str
+    path: Optional[str] = None
+    error: Optional[str] = None
+
+
+class CreateRepoRequest(BaseModel):
+    parent_path: str
+    name: str
+
+
+class CreateRepoResponse(BaseModel):
+    success: bool
+    message: str
+    path: Optional[str] = None
+    error: Optional[str] = None

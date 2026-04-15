@@ -20,7 +20,9 @@ from models import (
     ChatHistoryRequest, ChatHistoryResponse, ChatMessage,
     ReindexRequest, ReindexResponse,
     SavePromptResponseRequest, SavePromptResponseResponse,
-    BrowseRequest, BrowseResponse, BrowseItem
+    BrowseRequest, BrowseResponse, BrowseItem,
+    CreateDirectoryRequest, CreateDirectoryResponse,
+    CreateRepoRequest, CreateRepoResponse,
 )
 from job_queue import JobQueue, JobStatus
 
@@ -614,7 +616,8 @@ async def save_prompt_response(request: SavePromptResponseRequest):
             for line in lines:
                 # Verificar se a linha começa com heading (1-6 # seguidos de espaço ou qualquer caractere)
                 # Regex mais flexível: ^(#{1,6})\s*(.+)$ permite espaços opcionais e captura qualquer conteúdo
-                heading_match = re.match(r'^(#{1,6})\s*(.+)$', line)
+                # Ignarar hastags ex: #exemplo. diferenciar quando '#' é seguido de espaço e quando não é.
+                heading_match = re.match(r'^(#{1,6})\s+(.+)$', line)
                 if heading_match:
                     # Incrementar o heading adicionando um # no início
                     hashes = heading_match.group(1)
@@ -719,6 +722,89 @@ async def browse_path(request: BrowseRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao listar diretório: {str(e)}")
+
+
+@app.post("/api/directory", response_model=CreateDirectoryResponse)
+async def create_directory(request: CreateDirectoryRequest):
+    """Cria um único diretório: parent_path + name. Garante apenas um nível por request."""
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name é obrigatório e não pode ser vazio")
+    if "/" in name or "\\" in name:
+        raise HTTPException(status_code=400, detail="name deve ser um único segmento (sem / ou \\)")
+    if name in (".", ".."):
+        raise HTTPException(status_code=400, detail="name inválido")
+    try:
+        parent = validate_path(request.parent_path)
+        if not parent.is_dir():
+            raise HTTPException(status_code=400, detail="parent_path deve ser um diretório")
+        new_dir = parent / name
+        if new_dir.exists():
+            return CreateDirectoryResponse(
+                success=True,
+                message="Diretório já existe",
+                path=str(new_dir),
+            )
+        new_dir.mkdir(parents=False)
+        return CreateDirectoryResponse(
+            success=True,
+            message="Diretório criado",
+            path=str(new_dir),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=f"Sem permissão para criar diretório: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao criar diretório: {e}")
+
+
+@app.post("/api/create_repo", response_model=CreateRepoResponse)
+async def create_repo(request: CreateRepoRequest):
+    """Cria estrutura de repositório:
+       - parent_path/name
+       - chat_history dentro do repo
+       - prompt.md com template contendo [TITLE_STRING]
+    """
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name é obrigatório e não pode ser vazio")
+    if "/" in name or "\\" in name:
+        raise HTTPException(status_code=400, detail="name deve ser um único segmento (sem / ou \\)")
+    try:
+        parent = validate_path(request.parent_path)
+        if not parent.is_dir():
+            raise HTTPException(status_code=400, detail="parent_path deve ser um diretório válido")
+        new_dir = parent / name
+        if new_dir.exists():
+            return CreateRepoResponse(success=True, message="Repositório já existe", path=str(new_dir))
+
+        # Criar diretório principal
+        new_dir.mkdir(parents=False)
+
+        # Criar chat_history
+        chat_history_dir = new_dir / "chat_history"
+        chat_history_dir.mkdir(parents=True, exist_ok=True)
+
+        # Criar prompt.md com template básico contendo [TITLE_STRING]
+        prompt_md_path = new_dir / "prompt.md"
+        template_content = (
+            "# [TITLE_STRING]\n\n"
+            "Descrição: Insira uma breve descrição do prompt aqui.\n\n"
+            "# Pergunta:\n\n"
+            "Escreva a pergunta que será enviada ao LLM.\n\n"
+            "# Resposta:\n\n"
+            "_Resposta gerada será salva aqui._\n"
+        )
+        prompt_md_path.write_text(template_content, encoding="utf-8")
+
+        return CreateRepoResponse(success=True, message="Repositório criado", path=str(new_dir))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=f"Sem permissão para criar repositório: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao criar repositório: {e}")
 
 if __name__ == "__main__":
     import uvicorn
